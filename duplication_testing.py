@@ -1,4 +1,3 @@
-
 invs = {'date':[],'Total Revenue':[],'customer_id_list':[]}
 for inv in invoices:
     invs['date'].append(inv.TxnDate)
@@ -18,16 +17,20 @@ def get_active_customers(n):
     l = set([x for x in n if x in active_customer_ids])
     return len(l)
 
-df1 = df.pivot_table(index=df.date,values='customer_id_list',aggfunc=list)
+df1 = df.pivot_table(index=df.date.dt.isocalendar().week,values='customer_id_list',aggfunc=list)
+df1
 
 df1['Active Monthly Customers'] = df1.customer_id_list.apply(get_active_customers)
 
-df1 = df1.reset_index()#.rename(columns={'date':'Month'})
+df1 = df1.reset_index().rename(columns={'date':'Week'})
+df1
 
-df2 = df.pivot_table(index=df.date,values='Total Revenue',aggfunc=sum)
-df2 = df2.reset_index()#.rename(columns={'date':'Month'})
+df2 = df.pivot_table(index=df.date.dt.isocalendar().week,values='Total Revenue',aggfunc=sum)
+df2 = df2.reset_index().rename(columns={'date':'Week'})
+df2
 
 cdf = pd.merge(left=df2,right=df1)
+cdf
 
 cdf['Headcount'] = 25
 cdf['Revenue / Employee'] = cdf['Total Revenue']/cdf['Headcount']
@@ -36,9 +39,9 @@ cdf['Total Customers']=cdf.customer_id_list.apply(lambda x:len(set(x)))
 
 cdf['Revenue / Active Customer'] = cdf['Total Revenue']/cdf['Active Monthly Customers']
 
-cdf = cdf.rename(columns={'Active Monthly Customers':'Active Daily Customers'})
+cdf = cdf.rename(columns={'Active Monthly Customers':'Active Weekly Customers'})
 
-cdf[['date','Total Revenue','Headcount','Revenue / Employee',
- 'Active Daily Customers',
+cdf[['week','Total Revenue','Headcount','Revenue / Employee',
+ 'Active Weekly Customers',
  'Revenue / Active Customer',
- 'Total Customers',]].to_excel('dailydata.xlsx',index=False)
+ 'Total Customers',]].to_excel('weeklydata.xlsx',index=False)
