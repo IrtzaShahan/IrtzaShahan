@@ -23,14 +23,11 @@ df1
 df1['Active Monthly Customers'] = df1.customer_id_list.apply(get_active_customers)
 
 df1 = df1.reset_index().rename(columns={'date':'Week'})
-df1
 
 df2 = df.pivot_table(index=df.date.dt.isocalendar().week,values='Total Revenue',aggfunc=sum)
 df2 = df2.reset_index().rename(columns={'date':'Week'})
-df2
 
 cdf = pd.merge(left=df2,right=df1)
-cdf
 
 cdf['Headcount'] = 25
 cdf['Revenue / Employee'] = cdf['Total Revenue']/cdf['Headcount']
