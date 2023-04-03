@@ -1,3 +1,4 @@
+
 invs = {'date':[],'Total Revenue':[],'customer_id_list':[]}
 for inv in invoices:
     invs['date'].append(inv.TxnDate)
