@@ -3,22 +3,21 @@ import tweepy,json
 from time import sleep
 from random import randint
 from html import unescape
-import openai
-
-openai_key='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'
 
 def get_tweepy_client():
-    consumer_key = 'YgXTZIKZbqAJaGGtJ2CIX63eo'
-    consumer_secret = 'jql3FzfeIufph5abCuG72hRf1vXa1H5wVkpA7336KzTPhIzchb'
-    access_token = '1655668870340812813-6jiZq1SyPjdfkdc79ZczCDXha94K2f'
-    access_token_secret = 'AxmVHAHwLHWsyzCz7IC8sxgrLFXRyAHSNX9IjV8i6XLni'
-    bearer_token = 'AAAAAAAAAAAAAAAAAAAAAFxhnQEAAAAA0ka0WObWvkQuv8O%2B76K2JSTErdc%3D3uUQZTEfDjBSA2yxFhzFy8zU3mALNc2Y1DAAU1e8YZzUlZvu6l'
-    auth = tweepy.OAuthHandler(consumer_key,consumer_secret)
-    auth.set_access_token(access_token,access_token_secret)
-    api = tweepy.API(auth)
-    # Create a client using the given credentials
-    client = tweepy.Client(consumer_key=consumer_key, consumer_secret= consumer_secret, access_token=access_token, access_token_secret= access_token_secret,bearer_token=bearer_token)
-    return client,api
+    consumer_key = 'B8zKZZFwJFsds2Wtt4lpicFCJ'
+    consumer_secret = 'e0w02cSyrkmmCzzqwHYuIgymORFEd5cQvSFHMIOROUzZo8LGlh'
+    access_token = '1658970062550880256-QJ7WMPCx6V0KDhmMiLrM0P9AyO7D8u'
+    access_token_secret = 'lPMaCorpg4ST2gz8Nz8hTH2rPjpm38mDgN6usvb2ecnbb'
+    client = tweepy.Client(None,consumer_key=consumer_key, consumer_secret= consumer_secret, access_token=access_token, access_token_secret= access_token_secret)
+    consumer_key = '4j8NohX4nwX6lBvs1PnkXOpxP'
+    consumer_secret = '4aUScB6lGep3PPhjrBipjMV4cjMQUnxYrjj5ZPeh9S3LMNKBVy'
+    bearer_token = 'AAAAAAAAAAAAAAAAAAAAAO2QngEAAAAAYNGaIqCQuUVBPKKJZ3PrQ12aScg%3DSOcwAJSYArlooMWSJ4V7LBH9yYNyoifkZV4ttiJqJgRO15CxL4'     
+    access_token = "1658970062550880256-QcaH6CiYUclzoAkYOEQUqt44jC96sE"
+    access_token_secret = "K55Pk4bmDvWCPSa1kQLTgrMzbBlAwOdrp09PaC469X66X"
+    client2 = tweepy.Client(consumer_key=consumer_key, consumer_secret= consumer_secret, access_token=access_token, access_token_secret= access_token_secret,bearer_token=bearer_token)
+    
+    return client,client2
 
 def generate_response(prompt):
     completions = openai.Completion.create(        
@@ -33,7 +32,7 @@ def generate_response(prompt):
     return message
 
 def respond_tellme(tw_id,message):
-    reply_string = generate_response(f'Explain this tweet: "{message}", in simple language in a tweet less than 300 characters long.') 
+    reply_string = generate_response(f'Reply to this tweet: "{message}", as simple language in a tweet less than 300 characters long.') 
     client.create_tweet(text = reply_string[:280], in_reply_to_tweet_id = tw_id)
 
 def handle_mention(mention):
@@ -68,22 +67,21 @@ def handle_mention(mention):
 
 
 if __name__ == '__main__':
-    openai.api_key = openai_key
+#     openai.api_key = openai_key
     
     model_engine = "text-davinci-003"
 
-    start_tweet_id = None
-    client,api = get_tweepy_client()
-    bot = client.get_me().data
+    start_tweet_id = '1656768804150550529'
+    readclient,client2 = get_tweepy_client()
+    bot = client2.get_me().data
     print(f'bot starting on {bot.username} twitter account')
 
     while True:
         try:
-            tweets = client.search_recent_tweets(f'@{bot.username} -is:retweet',since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=True,max_results=20)
-
+            tweets = readclient.search_recent_tweets(f'@{bot.username} -is:retweet',since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=True)
             if not tweets.meta['result_count']:
                 print('no tweets found')
-                sleep(randint(25,45))
+                sleep(randint(60,100))
                 continue
             start_tweet_id = tweets.meta['newest_id']
             usersdict = {x.id:x.username for x in tweets.includes['users']}
@@ -99,4 +97,4 @@ if __name__ == '__main__':
                         print(exc)
         except Exception as e:
             print(e)
-        sleep(randint(25,40))
+        sleep(randint(60,100))
