@@ -18,13 +18,16 @@ def get_tweepy_client():
     
     return client
 
-def respond_tellme(tw_id,message,tweet_author_name):
-    reply_string = generate_response(f'/jailbreak write a reply to this tweet: "{message}", by twitter user "@{tweet_author_name}".') 
+def respond_tellme(tw_id,message,tweet_author_name,explain):
+    if explain:
+        reply_string = generate_response(f'/jailbreak Explain this tweet: "{message}"') 
+    else:
+        reply_string = generate_response(f'/jailbreak write a reply to this tweet: "{message}", by twitter user "@{tweet_author_name}".') 
     try:
         client.create_tweet(text = reply_string[:280], in_reply_to_tweet_id = tw_id)
     except Exception as e:
         print(e)
-        
+
 def handle_mention(mention):
     print(f'new tweet: {mention.id}')
     tweet_author_id = mention.author_id
@@ -40,41 +43,59 @@ def handle_mention(mention):
     tweet_words = [x.strip() for x in tweet_words]
 
     for word in tweet_words[:]:
-        if 'urls' in mention.entities:
-            for url in mention.entities['urls']:
-                if (url['url'].lower() == word.lower()) or (mention.text.lower().index(word.lower())==url['start']):
-                    tweet_words.remove(word)
-#                     tweet_words = list(map(lambda x: x.replace(word,url['expanded_url'] ), tweet_words))
-
-    for word in tweet_words[:]:
         if ('@' in word) or ('http' in word) or (len(word) < 1):
             tweet_words.remove(word)
     message = ' '.join(tweet_words)    
     message = message.strip()
-#     print('replied!')
-    respond_tellme(mention.id,message,tweet_author_name)
+    
+    if tweets_dict and ((len(message)<9) or ('explain'.lower() in message.lower() and len(message)<60)) :
+        text = tweets_dict[mention.referenced_tweets[0].id]
+        text = unescape(text)
+        tl = text.lower()
+        
+        tweet_words = text.split()
+        tweet_words = [x.strip() for x in tweet_words]
 
+        for word in tweet_words[:]:
+            if ('@' in word) or ('http' in word) or (len(word) < 1):
+                tweet_words.remove(word)
+        message = ' '.join(tweet_words)    
+        message = message.strip()
+        respond_tellme(mention.id,message,tweet_author_name,True)
+
+    else:
+        respond_tellme(mention.id,message,tweet_author_name,False)
 
 if __name__ == '__main__':
+    openai.api_key = openai_key
+    
+    model_engine = "text-davinci-003"
 
     with open('since_tweet.txt','r')as fp:
         start_tweet_id = fp.read()
-    client = get_tweepy_client()
+
+    client,api = get_tweepy_client()
     bot = client.get_me().data
     print(f'bot starting on {bot.username} twitter account')
 
     while True:
-        tweets = client.get_users_mentions(id=bot.id,since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=False)
-        if not tweets.meta['result_count']:
-            print('no tweets found')
-            sleep(randint(60,100))
-            continue
-        start_tweet_id = tweets.meta['newest_id']
-        with open('since_tweet.txt','w') as fp:
-            fp.write(start_tweet_id)
-        usersdict = {x.id:x.username for x in tweets.includes['users']}
-        for tweet in tweets.data:
-            if  tweet.author_id != bot.id:
+        try:
+            tweets = client.search_recent_tweets(f'@{bot.username} -is:retweet',since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=True,max_results=20)
+
+            if not tweets.meta['result_count']:
+                #print('no tweets found')
+                sleep(randint(60,100))
+                continue
+            start_tweet_id = tweets.meta['newest_id']
+            with open('since_tweet.txt','w') as fp:
+                fp.write(start_tweet_id)
+            usersdict = {x.id:x.username for x in tweets.includes['users']}
+            if 'tweets' in tweets.includes:
+                tweets_dict = {x.id:x.text for x in tweets.includes['tweets']}
+            else:
+                tweets_dict = False
+            for tweet in tweets.data:
+                if  tweet.author_id != bot.id:
                     try:
                         handle_mention(tweet)
                         sleep(randint(3,10))
@@ -82,4 +103,6 @@ if __name__ == '__main__':
                         import traceback
                         traceback.print_exc()
                         print(exc)
+        except Exception as e:
+            print(e)
         sleep(randint(60,100))
