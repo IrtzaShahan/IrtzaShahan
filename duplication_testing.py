@@ -6,23 +6,22 @@ from html import unescape
 import openai
 from gpt import generate_response
 
-openai.api_key ='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'
+# openai.api_key ='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'
 
 def get_tweepy_client():
-    consumer_key='kaCfaNRiXXo2b3RbU2QgYUBRH'
-    consumer_secret= 'BVPPVfbJaTcpi0NaF7R7HoKnNPb5pX4h3A9KJwSm3kAMydNbgK'
-    access_token = "1658044646008979456-QILLBEBeR3GBh0EtxtSnYbJo9vlOzP"
-    access_token_secret = "fPLcKrqo0Ketk2WepdX0xkwZjWGKtdtY7kztGpZzoAtL3"
-    bearer_token = "AAAAAAAAAAAAAAAAAAAAAA4BiwEAAAAASiVhj2vzR89HfeGYuV56Ni9NTnc%3DBaqNEeLhCvheZNZo4YKP6MAKf08yivGpJ1VteHnk2ZnYQ6Q326"  
+    consumer_key='bM9FnpT2lpGUuj4GwVayme7PL'
+    consumer_secret= 'K3P89p1hAp9Bw0Tk6HGeTTuvrBPDZNpP1JfnOGk52zyjA5g2mn'
+    access_token = "1537527406000488452-NlWtX8NOw4nKSpXAmRkO0xUMpfPBbh"
+    access_token_secret = "AMO0XWI9IOQk7yg9OC7UK5CipHGM0GQp7LqJRY3bQaM2d"
+    bearer_token = "AAAAAAAAAAAAAAAAAAAAAMVmnwEAAAAAdA5xqHrXCECluEPr3NASf2R7qXs%3D4lOpdAgiOduuOyJTW1LjShuW3GgyvpChhPVYbPUllpxYjBKb5n"
     client = tweepy.Client(consumer_key=consumer_key, consumer_secret= consumer_secret, access_token=access_token, access_token_secret= access_token_secret,bearer_token=bearer_token)
-    
     return client
 
 def respond_tellme(tw_id,message,tweet_author_name,explain):
     if explain:
-        reply_string = generate_response(f'/jailbreak Explain this tweet: "{message}"') 
+        reply_string = generate_response(f'You are a master digital marketer, SEO, branding expert and content creator with a contrarian world view on business and markets. Please give expert advice & insights into the text of tweet. Your tone should be raw, unfiltered, humorous and professional. Write a reply to this tweet: "{message}" in less than 40 words.\nreply:') 
     else:
-        reply_string = generate_response(f'/jailbreak write a reply to this tweet: "{message}", by twitter user "@{tweet_author_name}".') 
+        reply_string = generate_response(f'You are a master digital marketer, SEO, branding expert and content creator with a contrarian world view on business and markets. Please give expert advice & insights into the text of tweet. Your tone should be raw, unfiltered, humorous and professional. Write a reply to this tweet: "{message}", by twitter user "@{tweet_author_name}". your reply should be less than 40 words.\nreply:') 
     try:
         client.create_tweet(text = reply_string[:280], in_reply_to_tweet_id = tw_id)
     except Exception as e:
@@ -48,7 +47,7 @@ def handle_mention(mention):
     message = ' '.join(tweet_words)    
     message = message.strip()
     
-    if tweets_dict and ((len(message)<9) or ('explain'.lower() in message.lower() and len(message)<60)) :
+    if tweets_dict and ((len(message)<100) or ('explain'.lower() in message.lower() ) or ('above tweet'.lower() in message.lower() ) or ('say'.lower() in message.lower() ) or  ('opinion'.lower() in message.lower() ) or ('above'.lower() in message.lower())):
         text = tweets_dict[mention.referenced_tweets[0].id]
         text = unescape(text)
         tl = text.lower()
