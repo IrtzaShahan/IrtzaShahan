@@ -6,7 +6,7 @@ from html import unescape
 import openai
 from gpt import generate_response
 
-openai.api_key ='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'
+openai.api_key ='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'
 
 def get_tweepy_client():
     consumer_key='kaCfaNRiXXo2b3RbU2QgYUBRH'
@@ -67,21 +67,17 @@ def handle_mention(mention):
         respond_tellme(mention.id,message,tweet_author_name,False)
 
 if __name__ == '__main__':
-    openai.api_key = openai_key
     
-    model_engine = "text-davinci-003"
-
     with open('since_tweet.txt','r')as fp:
         start_tweet_id = fp.read()
 
-    client,api = get_tweepy_client()
+    client = get_tweepy_client()
     bot = client.get_me().data
     print(f'bot starting on {bot.username} twitter account')
 
     while True:
         try:
-            tweets = client.search_recent_tweets(f'@{bot.username} -is:retweet',since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=True,max_results=20)
-
+            tweets = client.search_recent_tweets(f'@{bot.username} -is:retweet',since_id=start_tweet_id,expansions='author_id,referenced_tweets.id',tweet_fields='entities,referenced_tweets',user_auth=True)
             if not tweets.meta['result_count']:
                 #print('no tweets found')
                 sleep(randint(60,100))
