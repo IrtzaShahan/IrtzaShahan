@@ -923,35 +923,32 @@ while True:
     response = client.get_users_mentions(clientId, since_id=startId)
     if response.data != None:
         for tweet in response.data:
-            try:
-                print(tweet.text)
-                collectionTweet, commandTweet = tweet.text.split('-', 1)
+#             try:
+            print(tweet.text)
+            collectionTweet, commandTweet = tweet.text.split('-', 1)
 
-                chosenCollectionTweet = getCollection(collectionTweet)
-                commandChosenTweet = getCommand(commandTweet)
+            chosenCollectionTweet = getCollection(collectionTweet)
+            commandChosenTweet = getCommand(commandTweet)
 
-                tweetCommandFunction = commandFunctions.get(commandChosenTweet)
-                message = ''
-
-                print('tweetCommandFunction:',tweetCommandFunction)
-
-                if tweetCommandFunction is None:
-                    message = "Invalid command. Please use 'collection name - command'. See Bio for commands. "[:280]
-                else:
-                    message = tweetCommandFunction(chosenCollectionTweet)[:280]
-
-                message += "\n https://app.tokensite.com/"
-                client.create_tweet(in_reply_to_tweet_id=tweet.id, text=message[:280])
-
-            except Exception as e:
-                print(f"An error occurred: {e}")
+            tweetCommandFunction = commandFunctions.get(commandChosenTweet)
+            message = ''
             
-            time.sleep(5)
+            print('tweetCommandFunction:',tweetCommandFunction)
             
+            if tweetCommandFunction is None:
+                message = "Invalid command. Please use 'collection name - command'. See Bio for commands. "[:280]
+            else:
+                message = tweetCommandFunction(chosenCollectionTweet)[:280]
+                
+            message += "\n https://app.tokensite.com/"
+            client.create_tweet(in_reply_to_tweet_id=tweet.id, text=message[:280])
         startId = response.meta['newest_id']
         with open('since_id.txt','w') as fp:
             fp.write(startId)
+#             except Exception as e:
+#                 print(f"An error occurred: {e}")
             
+            time.sleep(5)
     else:
         print('no new tweets')
     time.sleep(60)
