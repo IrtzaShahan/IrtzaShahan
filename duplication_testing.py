@@ -1,57 +1,44 @@
-import openai
-import logging
-import telegram
-import re
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters, CallbackContext
+async def get_clients_groups_dict():
+    try:
+        clients_groups_dict = {}
+        for i,phone_number in enumerate(phone_number_list):
+            print(f"{phone_number} logging in and getting groups")
+            client = TelegramClient(phone_number, int(api_id), api_hash)
+            await client.start(phone_number)
+            groups = await client.get_dialogs()
+            groups = [g for g in groups if ((g.is_group) or (g.is_channel))]
+            clients_groups_dict[client] = [groups,list_of_messages[i],f'{phone_number}',list_of_images[i]]
+            print(f" Successfully Logged in and Got list of groups for account {phone_number}")
+            await client.disconnect()
+        return clients_groups_dict
+    except Exception as e:
+        print(f"Error occurred: {e}")
 
-# Initialize the OpenAI API client with your API key
-openai.api_key = "YOUR_OPENAI_API_KEY"
-model_id = "gpt-3.5-turbo"
-
-# Initialize the logger
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# In-memory storage for user conversations
-user_conversations = {}
-
-
-async def ai(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.message.from_user.id
-    nftstring = update.message.text
-
-    substring = re.sub(r"^\W*\w+\W*", "", nftstring)
-    print(substring)
-
-    # Append the user's message to the conversation
-    if user_id not in user_conversations:
-        user_conversations[user_id] = []
-    user_conversations[user_id].append(f"User: {substring}")
-
-    system_intel = "You are the Bot, a product of the team and here to answer questions as needed."
-    prompt = "\n".join(user_conversations[user_id])
-
-    # Use GPT-3.5-turbo for chat completion
-    response = openai.ChatCompletion.create(
-        model=model_id,
-        messages=[
-            {"role": "system", "content": system_intel},
-            {"role": "user", "content": prompt},
-        ],
-    )
-
-    bot_response = response["choices"][0]["message"]["content"]
-    user_conversations[user_id].append(f"Bot: {bot_response}")
-
-    await update.message.reply_text(bot_response)
+async def send_messages(client,groups_messages):
+    await client.connect()
+    for g in groups_messages[0]:
+        try:
+            message = groups_messages[1]
+            image = groups_messages[3]
+            await client.send_file(g,image, caption=message)
+        except Exception as e:
+            print(f"error for group:{g.id}, {groups_messages[2]}:{e}")
+        else:
+            print(f"success:{groups_messages[2]}")
+        sleep(interval_between_messages)
+    await client.disconnect()
 
 
-def error(update: Update, context: CallbackContext) -> None:
-    logger.warning('Update "%s" caused error "%s"', update, context.error)
+async def main():
+    clients_groups_dict = await get_clients_groups_dict()
+    while True:
+        try:
+            for client,groups_messages in clients_groups_dict.items():
+                await send_messages(client,groups_messages)
+                sleep(interval_between_accounts)
+        except Exception as e:
+            print(f"main error: {e}")
+        sleep(interval_between_cycles_in_minutes*60)
 
 
-app = ApplicationBuilder().token("YOUR_BOT_TOKEN").build()
-app.add_handler(CommandHandler("ai", ai))
-
-app.run_polling()
+asyncio.run(main())
