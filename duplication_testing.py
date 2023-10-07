@@ -3,12 +3,12 @@ async def get_clients_groups_dict():
         clients_groups_dict = {}
         for i,phone_number in enumerate(phone_number_list):
             print(f"{phone_number} logging in and getting groups")
-            client = TelegramClient(phone_number, int(api_id), api_hash)
+            client = TelegramClient(f'my_session_{i+10}', int(api_id), api_hash)
             await client.start(phone_number)
             groups = await client.get_dialogs()
             groups = [g for g in groups if ((g.is_group) or (g.is_channel))]
-            clients_groups_dict[client] = [groups,list_of_messages[i],f'{phone_number}',list_of_images[i]]
-            print(f" Successfully Logged in and Got list of groups for account {phone_number}")
+            clients_groups_dict[client] = [groups,list_of_messages[i],f'client_{i+10}',list_of_images[i]]
+            print(f" Successfully Logged in and Got list of groups for account session{i+1} ({phone_number})")
             await client.disconnect()
         return clients_groups_dict
     except Exception as e:
@@ -27,6 +27,8 @@ async def send_messages(client,groups_messages):
             print(f"success:{groups_messages[2]}")
         sleep(interval_between_messages)
     await client.disconnect()
+
+
 
 
 async def main():
