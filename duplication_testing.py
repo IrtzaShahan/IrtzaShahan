@@ -8,16 +8,20 @@ api_id = 27626586
 api_hash = '90c8ff00f20929899e1cc2f16d63ffe1'
 api_key = 'f083e7e2-925e-4fe1-8bfc-1dfc48ca5625'
 
-langs = {'2112386913':'zh-Hant_TW','2134638726':'en_US','2122503314':'el_GR',"2068375320":"es_ES",'2124467339':'tr_TR'}
-flags = {'2112386913':'[🇨🇳](https://t.me/+6GCnV6z0kX5hMjFi)','2134638726':'[🇺🇸](https://t.me/chibaneko)','2122503314':'[🇬🇷](https://t.me/+vKqEstlNOBo5Mjgy)',"2068375320":'[🇪🇸](https://t.me/chibanekospain)',"2124467339":'[🇹🇷](https://t.me/+LqA2ir1fybo3OGMy)'}
+english = "1719957782"
+chinese = "2146115918"
 
-channels_list = ["-1002134638726","-1002112386913","-1002122503314","-1002068375320","-1002124467339"]
+langs = {f'{chinese}':'zh-Hans_CN',f'{english}':'en_US'}
+flags = {f'{chinese}':'[🇨🇳](https://t.me/+8Xh1EX89E7YzM2Rl)',f'{english}':'[🇺🇸](https://t.me/+i0OCf7VB9r4yODk9)'}
+
+channels_list = [f"-100{english}",f"-100{chinese}"]
 
 client = TelegramClient('bot', api_id, api_hash)
 
-client.start()
+client.start(bot_token="6903707375:AAFEi6kLj-t2f6Gs1NJSjv36FNb09Dqu2iM")
+me = client.get_me()
 
-def translate_text(text, target_language,a,b):
+def translate_text(text, target_language, api_key,source_language):
     url = "https://api-b2b.backenster.com/b1/api/v3/translate"
     headers = {
         "accept": "application/json",
@@ -32,7 +36,7 @@ def translate_text(text, target_language,a,b):
     }
 
     response = requests.post(url, headers=headers, json=data)
-
+    
     if 'result' in response.json():
         translated_text = response.json()['result']
         return translated_text
@@ -52,9 +56,7 @@ def get_entities():
         entity_list.append(entity)
     return entity_list
 
-
 entities = get_entities()
-
 
 @client.on(events.ChatAction(entities))
 async def pin_msg_handler(message):
@@ -66,14 +68,6 @@ async def pin_msg_handler(message):
         for out in n_l:
             out_channel= await client.get_input_entity(int(out))
             await client.pin_message(out_channel,data[f"-100{message.action_message.peer_id.channel_id};{message.action_message.reply_to.reply_to_msg_id}"][out])
-
-
-def find_object_with_key_value(data, key, value):
-    for parent_key, parent_value in data.items():
-        if key in parent_value and parent_value[key] == value:
-            return parent_key, parent_value
-    return None
-
 
 @client.on(events.NewMessage(entities,incoming=True))
 async def handler(message):
@@ -92,49 +86,77 @@ async def handler(message):
             sender_name += sender.last_name
         if (not sender_name) and hasattr(sender,'username') and sender.username:
             sender_name = sender.username
+
         sender_link = f"[{sender_name}](https://t.me/{sender.username})"
     else:
         sender_link = ''
-
     if message.text:
         if message.text.startswith('/'):
             return
         try:
-            for out in n_l:
-                if message.reply_to:
-                    try:
-                        reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
-                    except KeyError:
-                        key, obj = find_object_with_key_value(data,f"-100{message.peer_id.channel_id}",message.reply_to.reply_to_msg_id)
-                        if out in key:
-                            reply_id = int(key.split(';')[-1])
-                        else:
-                            try:
-                                reply_id = obj[out]
-                            except:
+            if message.media:
+                if hasattr(message.media,'webpage'):
+                    if message.text[:4].lower() == 'http' and len(message.text.split())==1:
+                        for out in n_l:
+                            if message.reply_to:
+                                try:
+                                    reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                                except KeyError:
+                                    reply_id = None
+                            else:
                                 reply_id= None
-                else:
-                    reply_id= None
 
-                out_channel= await client.get_input_entity(int(out))
-                completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
-
-                if message.media:
-                    if hasattr(message.media,'webpage'):
-                        if message.text[:4].lower() == 'http' and len(message.text.split())==1:
+                            out_channel= await client.get_input_entity(int(out))
                             r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id)
                             msg_val[out] = r.id
-                        else:
+
+                    else:
+                        for out in n_l:
+                            if message.reply_to:
+                                try:
+                                    reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                                except KeyError:
+                                    reply_id = None
+                            else:
+                                reply_id= None
+                            
+                            completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                            out_channel= await client.get_input_entity(int(out))
                             r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
                             msg_val[out] = r.id
-                    else:
+                    
+                else:
+                    for out in n_l:
+                        if message.reply_to:
+                            try:
+                                reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                            except KeyError:
+                                reply_id = None
+                        else:
+                            reply_id= None
+
+                        completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                        out_channel= await client.get_input_entity(int(out))
                         r = await client.send_file(out_channel,message.media,caption=f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
                         msg_val[out] = r.id
-                else:
+            else:
+                for out in n_l:
+                    if message.reply_to:
+                        try:
+                            reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                        except KeyError:
+                            reply_id = None
+                    else:
+                        reply_id= None
+
+                    completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                    out_channel= await client.get_input_entity(int(out))
                     r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id)
                     msg_val[out] = r.id
+
         except Exception as e:
             print(e)
+            print(type(e).__name__)
         else:
             print('A msg forwarded succesfully')
             with open('table.json','r') as fp:
@@ -142,37 +164,17 @@ async def handler(message):
             data[msg_key] = msg_val
             with open('table.json','w') as fp:
                 json.dump(data,fp,indent=1)
-
+            
     else:
         try:
             for out in n_l:
-                if message.reply_to:
-                    try:
-                        reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
-                    except KeyError:
-                        key, obj = find_object_with_key_value(data,f"-100{message.peer_id.channel_id}",message.reply_to.reply_to_msg_id)
-                        if out in key:
-                            reply_id = int(key.split(';')[-1])
-                        else:
-                            try:
-                                reply_id = obj[out]
-                            except:
-                                reply_id= None
-                else:
-                    reply_id= None
-
                 out_channel= await client.get_input_entity(int(out))
                 await client.send_file(out_channel,message.media,caption=f"{flags[str(message.peer_id.channel_id)]} {sender_link}")
         except Exception as e:
             print(e)
-        else:
-            print('A msg forwarded succesfully')
-            with open('table.json','r') as fp:
-                data = json.load(fp)
-            data[msg_key] = msg_val
-            with open('table.json','w') as fp:
-                json.dump(data,fp,indent=1)
+            print(type(e).__name__)
 
-print('\nBot is started and will try to forward all rcvd signals from source groups to destination group, please make sure to leave this window open(do not close it)\n')
+
+print(f'\nBot {me.username} is started and will try to forward all rcvd signals from source groups to destination group, please make sure to leave this window open(do not close it)\n')
 
 client.run_until_disconnected()
