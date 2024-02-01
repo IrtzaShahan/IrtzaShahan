@@ -1,29 +1,25 @@
 def translate_text(text, target_language, api_key,source_language):
-    base_url = 'https://libretranslate.com/translate'
-    
-    params = {
-        'api_key': api_key,
-        'q': text,
-        'target': target_language,
-        'format': 'text',
-        'source': source_language,
-    }
-
+    url = "https://api-b2b.backenster.com/b1/api/v3/translate"
     headers = {
-        'accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "accept": "application/json",
+        "content-type": "application/json",
+        "Authorization": "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
     }
-    
-    response = requests.post(base_url, headers=headers, data=params)
 
-    if response.status_code == 200:
-        if 'translatedText' in response.json():
-            return response.json()['translatedText']
-        else:
-            print(response.json())
-            return response.text
+    data =  {
+        "platform": "api",
+        "to": target_language,
+        "data": text
+    }
+
+    response = requests.post(url, headers=headers, json=data)
+    
+    if 'result' in response.json():
+        translated_text = response.json()['result']
+        return translated_text
     else:
-        print(f"Error: {response.status_code}, {response.text}")
+        print(response.json())
+        return False
 
 
 def get_entities():
@@ -53,8 +49,15 @@ async def pin_msg_handler(message):
 @client.on(events.NewMessage(entities,incoming=True))
 async def handler(message):
     n_l = channels_list[:]
-    n_l.remove(f"-100{message.peer_id.channel_id}")
-    msg_key,msg_val = f"-100{message.peer_id.channel_id};{message.id}",{}
+    try:
+        n_l.remove(f"-100{message.peer_id.channel_id}")
+        msg_key,msg_val = f"-100{message.peer_id.channel_id};{message.id}",{}
+        c_id = f"-100{message.peer_id.channel_id}"
+    except:
+        n_l.remove(f"-{message.peer_id.chat_id}")
+        msg_key,msg_val = f"-{message.peer_id.chat_id};{message.id}",{}
+        c_id = f"-{message.peer_id.chat_id}"
+
     with open('table.json','r') as fp:
         data = json.load(fp)
 
@@ -81,29 +84,29 @@ async def handler(message):
                         for out in n_l:
                             if message.reply_to:
                                 try:
-                                    reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                                    reply_id = data[f"{c_id};{message.reply_to.reply_to_msg_id}"][out]
                                 except KeyError:
                                     reply_id = None
                             else:
                                 reply_id= None
 
                             out_channel= await client.get_input_entity(int(out))
-                            r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id)
+                            r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id)
                             msg_val[out] = r.id
 
                     else:
                         for out in n_l:
                             if message.reply_to:
                                 try:
-                                    reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                                    reply_id = data[f"{c_id};{message.reply_to.reply_to_msg_id}"][out]
                                 except KeyError:
                                     reply_id = None
                             else:
                                 reply_id= None
                             
-                            completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                            completion = translate_text(message.text.strip(), langs[out], api_key,langs[str(c_id)])
                             out_channel= await client.get_input_entity(int(out))
-                            r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
+                            r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
                             msg_val[out] = r.id
                     
                 else:
@@ -116,23 +119,23 @@ async def handler(message):
                         else:
                             reply_id= None
 
-                        completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                        completion = translate_text(message.text.strip(), langs[out], api_key,langs[str(c_id)])
                         out_channel= await client.get_input_entity(int(out))
-                        r = await client.send_file(out_channel,message.media,caption=f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
+                        r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
                         msg_val[out] = r.id
             else:
                 for out in n_l:
                     if message.reply_to:
                         try:
-                            reply_id = data[f"-100{message.peer_id.channel_id};{message.reply_to.reply_to_msg_id}"][out]
+                            reply_id = data[f"`{c_id};{message.reply_to.reply_to_msg_id}"][out]
                         except KeyError:
                             reply_id = None
                     else:
                         reply_id= None
 
-                    completion = translate_text(message.text.strip(), langs[out[4:]], api_key,langs[str(message.peer_id.channel_id)])
+                    completion = translate_text(message.text.strip(), langs[out], api_key,langs[str(c_id)])
                     out_channel= await client.get_input_entity(int(out))
-                    r = await client.send_message(out_channel,f"{flags[str(message.peer_id.channel_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id)
+                    r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id)
                     msg_val[out] = r.id
 
         except Exception as e:
@@ -150,7 +153,7 @@ async def handler(message):
         try:
             for out in n_l:
                 out_channel= await client.get_input_entity(int(out))
-                await client.send_file(out_channel,message.media,caption=f"{flags[str(message.peer_id.channel_id)]} {sender_link}")
+                await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}")
         except Exception as e:
             print(e)
             print(type(e).__name__)
