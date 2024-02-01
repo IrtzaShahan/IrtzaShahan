@@ -1,48 +1,29 @@
-from telethon.sync import TelegramClient,events
-from datetime import datetime, timedelta
-from time import time
-import os, requests, json
-
-
-api_id = 27626586
-api_hash = '90c8ff00f20929899e1cc2f16d63ffe1'
-api_key = 'f083e7e2-925e-4fe1-8bfc-1dfc48ca5625'
-
-english = "1719957782"
-chinese = "2146115918"
-
-langs = {f'{chinese}':'zh-Hans_CN',f'{english}':'en_US'}
-flags = {f'{chinese}':'[🇨🇳](https://t.me/+8Xh1EX89E7YzM2Rl)',f'{english}':'[🇺🇸](https://t.me/+i0OCf7VB9r4yODk9)'}
-
-channels_list = [f"-100{english}",f"-100{chinese}"]
-
-client = TelegramClient('bot', api_id, api_hash)
-
-client.start(bot_token="6903707375:AAFEi6kLj-t2f6Gs1NJSjv36FNb09Dqu2iM")
-me = client.get_me()
-
 def translate_text(text, target_language, api_key,source_language):
-    url = "https://api-b2b.backenster.com/b1/api/v3/translate"
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
-    }
-
-    data =  {
-        "platform": "api",
-        "to": target_language,
-        "data": text
-    }
-
-    response = requests.post(url, headers=headers, json=data)
+    base_url = 'https://libretranslate.com/translate'
     
-    if 'result' in response.json():
-        translated_text = response.json()['result']
-        return translated_text
+    params = {
+        'api_key': api_key,
+        'q': text,
+        'target': target_language,
+        'format': 'text',
+        'source': source_language,
+    }
+
+    headers = {
+        'accept': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+    }
+    
+    response = requests.post(base_url, headers=headers, data=params)
+
+    if response.status_code == 200:
+        if 'translatedText' in response.json():
+            return response.json()['translatedText']
+        else:
+            print(response.json())
+            return response.text
     else:
-        print(response.json())
-        return False
+        print(f"Error: {response.status_code}, {response.text}")
 
 
 def get_entities():
