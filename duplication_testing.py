@@ -1,9 +1,8 @@
 client = TelegramClient('bot', api_id, api_hash)
-
-client.start(bot_token="6633748725:AAGIhDfz-dQ3UDSgM3u_qJ2Q_kiYScspHCE")
+client.start(bot_token=bot_token_hash)
 me = client.get_me()
 
-# set up logging
+
 format_str = '%(asctime)s - %(levelname)s - %(message)s'
 file_name = 'console.log'
 
@@ -19,18 +18,13 @@ logging.getLogger().addHandler(file_handler)
 
 def translate_text(text, target_language, api_key,source_language):
     url = "https://api-b2b.backenster.com/b1/api/v3/translate"
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
-    }
 
-    data =  {
-        "platform": "api",
-        "from": source_language,
-        "to": target_language,
-        "data": text
-    }
+    headers = {"accept": "application/json", "content-type": "application/json", "Authorization": api_key}
+
+    if source_language == "zh-Hant_TW":
+        data = {"platform": "api", "to": target_language, "data": text}
+    else:
+        data = {"platform": "api", "from": source_language, "to": target_language, "data": text}
 
     response = requests.post(url, headers=headers, json=data)
 
@@ -38,12 +32,8 @@ def translate_text(text, target_language, api_key,source_language):
         translated_text = response.json()['result']
         return translated_text
     else:
-        logging.info(response.json())
+        logging.warning(response.text)
         return False
-
-def update_sets(sets_config):
-    with open('sets_configs.json','w') as fp:
-        json.dump(sets_config,fp,indent=1)
 
 
 def find_object_with_key_value(data, key, value):
@@ -53,90 +43,20 @@ def find_object_with_key_value(data, key, value):
     logging.warning(f"key,val '{key},{value}' not found")
     return 'None','None;None'
 
-def find_set_id_for_group(group_id):
-    for set_id, config in sets_config.items():
-        if str(group_id) in config['channels_list']:
-            return set_id
-    return None
 
-def get_entities(config):
-    all_entities = []
-    for set_name, set_details in config.items():
-        entity_list = []
-        channels_list = set_details["channels_list"]
-        for channel in channels_list:
-            try:
-                input_par = int(channel)
-            except ValueError:
-                input_par = channel
-            entity = client.get_input_entity(input_par)
-            entity_list.append(entity)
-        all_entities.extend(entity_list)
-    return all_entities
+def get_entities():
+    entity_list= []
+    for channel in channels_list:
+        try:
+            input_par = int(channel)
+        except:
+            input_par = channel
+        entity=client.get_input_entity(input_par)
+        entity_list.append(entity)
+    return entity_list
 
 
-entities = get_entities(sets_config)
-
-@client.on(events.NewMessage(pattern='/filter'))
-async def add_filter(event):
-    c_id =f"{event.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-    if not set_id:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    text = event.message.text.split(maxsplit=1)
-    command, reply = text[1].split(maxsplit=1)
-    if command.startswith('"') and command.endswith('"'):
-        command = command[1:-1]  # Remove quotes for phrases
-    sets_config[set_id]['filters'][command.lower()] = reply
-    update_sets(sets_config)
-    await event.respond(f"filter for '{command}' added successfully.")
-
-@client.on(events.NewMessage(pattern='/stop '))
-async def remove_filter(event):
-    c_id =f"{event.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-    if not set_id:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    command = event.message.text.split(maxsplit=1)[1]
-    if command.startswith('"') and command.endswith('"'):
-        command = command[1:-1]  # Remove quotes for phrases
-
-    if command.lower() in filters:
-        del sets_config[set_id]['filters'][command.lower()]
-        update_sets(sets_config)
-        await event.respond(f"filter for '{command}' removed.")
-    else:
-        await event.respond("filter not found.")
-
-@client.on(events.NewMessage(pattern='/stopall'))
-async def remove_all_filters(event):
-    c_id =f"{event.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-    if not set_id:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    sets_config[set_id]['filters'].clear()
-    update_sets(sets_config)
-    await event.respond("All filters removed.")
-
-@client.on(events.NewMessage(pattern='/filters'))
-async def list_filters(event):
-    c_id =f"{event.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-    if not set_id:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    if sets_config[set_id]['filters']:
-        commands_list = "\n".join([f"{cmd}: {reply}" for cmd, reply in sets_config[set_id]['filters'].items()])
-        await event.respond(f"filters:\n{commands_list}")
-    else:
-        await event.respond("No filters set.")
+entities = get_entities()
 
 @client.on(events.NewMessage(pattern='/id'))
 async def handler(event):
@@ -153,30 +73,10 @@ async def pin_msg_handler(message):
             out_channel= await client.get_input_entity(int(out))
             await client.pin_message(out_channel,data[f"-100{message.action_message.peer_id.channel_id};{message.action_message.reply_to.reply_to_msg_id}"][out])
 
-
 @client.on(events.NewMessage(entities,incoming=True))
 async def handler(message):
-    c_id =f"{message.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-
-    if set_id:
-        n_l = sets_config[set_id]['channels_list'][:]
-        langs = sets_config[set_id]['langs']
-        flags = sets_config[set_id]['flags']
-        filters = sets_config[set_id]['filters']
-    else:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    if message.text:
-        text = message.text.lower()
-        for command in filters:
-            if command in text:
-                await message.respond(filters[command])
-                return
-        if message.text.startswith('/'):
-            return
-
+    c_id = f"{message.chat_id}"
+    n_l = channels_list[:]
     
     try:
         n_l.remove(c_id)
@@ -203,9 +103,10 @@ async def handler(message):
         sender_link = ''
 
     if message.text:
+        if message.text.startswith('/'):
+            return
         try:
             for out in n_l:
-##                logging.warning(f'{out},{cid}')
                 if message.reply_to:
                     try:
                         reply_id = data[f"{c_id};{message.reply_to.reply_to_msg_id}"][out]
@@ -225,6 +126,9 @@ async def handler(message):
 
                 out_channel= await client.get_input_entity(int(out))
                 completion = translate_text(message.text.strip(), langs[out], api_key,langs[str(c_id)])
+
+                if not completion:
+                    return
 
                 if message.media:
                     if hasattr(message.media,'webpage'):
