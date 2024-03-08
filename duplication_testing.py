@@ -1,6 +1,6 @@
 @client.on(events.MessageEdited(entities))
 async def edit_handler(message):
-    if message.text and message.text.startswith('/') or message.out:
+    if message.text and message.text.startswith('/'):
         return
 
     c_id =f"{message.chat_id}"
