@@ -1,90 +1,71 @@
-@client.on(events.MessageEdited(entities))
-async def edit_handler(message):
-    if message.text and message.text.startswith('/'):
-        return
+import praw,requests,csv,os,asyncio
+from time import sleep
+from telegram import Update,Bot
 
-    c_id =f"{message.chat_id}"
-    set_id = find_set_id_for_group(c_id)
+chat_id = '-1002172782595'
+telegram_bot_token = '6920822174:AAF9FSA0FyZCU46D_766y4KjIlbtFq3FpEo'
+sheet_url = 'https://docs.google.com/spreadsheets/d/10MdKO1OYbDrDdrPGRHALjKFlL1lFr0YsjI_4uITzHuk/edit?gid=1058675105#gid=1058675105'
+#in minutes
+wait_timer = 360 # 6 hours
+# Initialize the Reddit API client
+reddit = praw.Reddit(
+    client_id='XT8Ogk7-MGknh4vCy3JxMg',
+    client_secret='K4YUIDRQ77jrgFFMrwDkBZAgyGjqqQ',
+    user_agent='windows:Sub Scraper:v0.9.6 (by u/Boefie16)'
+)
 
-    if set_id:
-        n_l = sets_config[set_id]['channels_list'][:]
-        langs = sets_config[set_id]['langs']
-        flags = sets_config[set_id]['flags']
-    else:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    try:
-        n_l.remove(c_id)
-    except Exception as e:
-        logging.error("fatal error")
-        logging.error(e)
-        return
-    await asyncio.sleep(60)
-    with open('table.json','r') as fp:
-        data = json.load(fp)
-
-    if message.text:
+# Function to check if a Reddit user exists
+def check_user_existence(username='MariaHollow'):
         try:
-            for out in n_l:
-                try:
-                    msg_id = data[f"{c_id};{message.id}"][out]
-                except KeyError:
-                    msg_id= None
-                    logging.warning(f"failed to find original message being edited, {c_id};{message.id}:{out}")
-                    continue
-
-                completion = translate_text(message.text.strip(), langs[out], api_key,langs[c_id])
-
-                try:
-                    original_message = await client.get_messages(int(out), ids=msg_id)
-                    original_text_line1 = original_message.text.split('\n')[0]
-                    if not original_message:
-                        sender = await message.get_sender()
-                        sender_link = get_sender_link(sender)
-                        original_text_line1 = f"{flags[str(c_id)]} {sender_link}\n"
-                except:
-                    sender = await message.get_sender()
-                    sender_link = get_sender_link(sender)
-                    original_text_line1 = f"{flags[str(c_id)]} {sender_link}\n"
-
-
-                await client.edit_message(int(out), msg_id, f"{original_text_line1}\n{completion.strip()}",link_preview=False)
-        except rpcerrorlist.MessageNotModifiedError:
-            logging.info("edited message is same as original")
-            return
+            user = reddit.redditor(username)
+            if getattr(user, 'is_suspended', False):
+                return False
+            if not user.id:
+                return False
         except Exception as e:
-            logging.error(e)
+            if "received 404 HTTP response" not in str(e):
+                print(f'error occured while trying to check {username} error: {e}')
+            else:
+                return False
         else:
-            logging.info('A msg edited succesfully')
+            user_results = list(reddit.subreddit("all").search(f"author:{username}", limit=1, params={'include_over_18': 'true'}))
+            if user_results:
+                return True
+            if user.id:
+                return True
+async def send_tg_msg(chat_id,text):
+    bot = Bot(token=telegram_bot_token)
+    response = await bot.send_message(chat_id=chat_id, text = text)
+    sleep(1)
+
+def get_user_names(sheet_url):
+    url_1 = sheet_url.replace('/edit#gid=', '/export?format=csv&gid=')
+    res = requests.get(url_1)
+    usernames = []
+    with open('file.csv','w+',encoding='utf-8', newline='')as f:
+        f.write(res.text)
+        f.seek(0)
+        f.readline()
+        for cols in csv.reader(f,delimiter=','):
+            if cols[4]:
+                usernames.append(cols[4])
+    os.remove('file.csv')
+    return usernames
 
 
-@client.on(events.ChatAction(entities))
-async def pin_msg_handler(message):
-    c_id =f"{message.chat_id}"
-    set_id = find_set_id_for_group(c_id)
-
-    if set_id:
-        n_l = sets_config[set_id]['channels_list'][:]
-    else:
-        logging.error('rcvd message out of any provided sets')
-        return
-
-    await asyncio.sleep(120)
-
-    if message.action_message and message.action_message.reply_to:
-        with open('table.json','r') as fp:
-            data = json.load(fp)
-        n_l.remove(c_id)
-
-        for out in n_l:
-            try:
-                msg_id = data[f"{c_id};{message.action_message.reply_to.reply_to_msg_id}"][out]
-                if not msg_id:
-                    logging.error(f"message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
-                    continue
-            except:
-                logging.error(f"message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
-                continue
-
-            await client.pin_message(int(out),msg_id)
+if __name__ == '__main__':
+    while True:
+        usernames = get_user_names(sheet_url)
+        banned_users = []
+        for U in usernames:
+            if not check_user_existence(U):
+                banned_users.append(U)
+        
+        if banned_users:
+            banned_users = [x for x in banned_users if len(x)>0]
+            msg_string = f"({len(banned_users)}) Banned Reddit Accounts:\n\n"
+            msg_string += '\n'.join(banned_users)
+            asyncio.run(send_tg_msg(chat_id,msg_string))
+        else:
+            asyncio.run(send_tg_msg(chat_id,"(0) Banned Reddit Accounts"))
+        sleep(wait_timer*60)
