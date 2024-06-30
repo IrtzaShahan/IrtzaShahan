@@ -39,7 +39,7 @@ async def send_tg_msg(chat_id,text):
     sleep(1)
 
 def get_user_names(sheet_url):
-    url_1 = sheet_url.replace('/edit#gid=', '/export?format=csv&gid=')
+    url_1 = sheet_url.replace('/edit?gid=', '/export?format=csv&gid=')
     res = requests.get(url_1)
     usernames = []
     with open('file.csv','w+',encoding='utf-8', newline='')as f:
