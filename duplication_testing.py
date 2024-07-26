@@ -1,15 +1,15 @@
-from telethon.sync import TelegramClient,events
+from telethon.sync import TelegramClient,events, Button
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import Chat, Channel, ChannelParticipantsAdmins
 from telethon.tl.functions.messages import GetFullChatRequest
 from datetime import datetime, timedelta
 from time import time
-import os, requests, json
+import os, requests,json
 import logging
 from telethon.errors import rpcerrorlist
 import asyncio
 
-bot_token_hash = "6956671682:AAFupT71zTXr1ia025W4DND9I8vkNjfXNF0"
+bot_token_hash = "6633748725:AAGIhDfz-dQ3UDSgM3u_qJ2Q_kiYScspHCE"
 
 word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
                            'Rond':'輪舞;Rond',
@@ -55,6 +55,7 @@ file_handler.setFormatter(logging.Formatter(format_str))
 # Add the console handler to the root logger
 logging.getLogger().addHandler(file_handler)
 
+
 admin_cache = {}
 admin_cache_expiry = timedelta(hours=5)
 
@@ -64,9 +65,18 @@ async def get_admins(chat_id):
         admins, timestamp = admin_cache[chat_id]
         if datetime.now() - timestamp < admin_cache_expiry:
             return admins
+    
+##    # Fetch the list of admins
+##    result = await client(GetParticipantsRequest(
+##        channel=chat_id,
+##        filter=ChannelParticipantsAdmins(),
+##        offset=0,
+##        limit=100,
+##        hash=0
+##    ))
 
     entity = await client.get_entity(chat_id)
-
+    
     if isinstance(entity, Channel):
         # Fetch the list of admins for a channel (supergroup)
         result = await client(GetParticipantsRequest(
@@ -81,15 +91,20 @@ async def get_admins(chat_id):
         # Fetch the list of admins for a regular group
         full_chat = await client(GetFullChatRequest(chat_id))
         admins = [user.id for user in full_chat.full_chat.participants.participants if user.admin_rights]
+    
+    
+    
+##    admins = [user.id for user in result.users]
 
     # Update the cache
     admin_cache[chat_id] = (admins, datetime.now())
-
+    
     return admins
 
 async def is_user_admin(chat_id, user_id):
     admins = await get_admins(chat_id)
     return user_id in admins
+
 
 def translate_text(text, target_language, api_key,source_language):
     url = "https://api-b2b.backenster.com/b1/api/v3/translate"
@@ -150,32 +165,50 @@ def get_sender_link(sender):
     return sender_link
 
 
-##def get_entities(config):
-##    all_entities = []
-##    for set_name, set_details in config.items():
-##        entity_list = []
-##        channels_list = set_details["channels_list"]
-##        for channel in channels_list:
-##            try:
-##                input_par = int(channel)
-##            except ValueError:
-##                input_par = channel
-##            entity = client.get_input_entity(input_par)
-##            entity_list.append(entity)
-##        all_entities.extend(entity_list)
-##    return all_entities
+def get_entities(config):
+    all_entities = []
+    for set_name, set_details in config.items():
+        entity_list = []
+        channels_list = set_details["channels_list"]
+        for channel in channels_list:
+            try:
+                input_par = int(channel)
+            except ValueError:
+                input_par = channel
+            entity = client.get_input_entity(input_par)
+            entity_list.append(entity)
+        all_entities.extend(entity_list)
+    return all_entities
 
 
-##entities = get_entities(sets_config)
+entities = get_entities(sets_config)
 
-@client.on(events.NewMessage(pattern='/set_project '))
+message_counter = 0
+
+@client.on(events.NewMessage(pattern='/set_button_data'))
+async def set_button_data(event):
+##    if event.sender_id != 6345455034:
+##        await event.respond("You are not eligible for this action.", reply_to=event.message)
+##        return
+
+    txt = event.message.text
+
+    format_correct = len(txt.split()) > 2
+
+    if format_correct:
+        li = txt.split(" ", 2)
+        url = li[1]
+        text = li[2]
+        btn = {'txt': text, 'url': url}
+        with open('btn.json', 'w') as fp:
+            json.dump(btn, fp)
+        await event.respond("Button text and URL successfully updated.", reply_to=event.message)
+    else:
+        await event.respond("Please send the command in correct format like this:\n\"command url button text\"\n\nFor example:\n/set_button_data www.youtube.com sample button text", reply_to=event.message)
+
+
+@client.on(events.NewMessage(pattern='/setup_translator '))
 async def new_project(event):
-    c_id = event.chat_id
-    user_id = event.sender_id
-    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
-        await event.reply("You need to be an admin to use this command.")
-        return
-
     text = event.message.text
     command, project_name = text.split(maxsplit=1)
     data = sets_config
@@ -195,10 +228,10 @@ async def new_project(event):
 async def add_group(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
+    if not await is_user_admin(c_id, user_id):
         await event.reply("You need to be an admin to use this command.")
         return
-
+    
     text = event.message.text
     command, details = text.split(maxsplit=1)
     try:
@@ -224,7 +257,7 @@ async def add_group(event):
 async def add_filter(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
+    if not await is_user_admin(c_id, user_id):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -245,7 +278,7 @@ async def add_filter(event):
 async def remove_filter(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
+    if not await is_user_admin(c_id, user_id):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -269,7 +302,7 @@ async def remove_filter(event):
 async def remove_all_filters(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
+    if not await is_user_admin(c_id, user_id):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -300,7 +333,7 @@ async def list_filters(event):
 async def id_handler(event):
     await event.reply(f"this channel/group id is: {event.chat_id}")
 
-@client.on(events.MessageEdited)
+@client.on(events.MessageEdited(entities))
 async def edit_handler(message):
     if message.text and message.text.startswith('/') or message.out:
         return
@@ -378,6 +411,7 @@ async def deleted_message_listener(message):
         logging.error("fatal error")
         logging.error(e)
         return
+    
     await asyncio.sleep(10)
     with open('table.json','r') as fp:
         data = json.load(fp)
@@ -429,6 +463,10 @@ async def pin_msg_handler(message):
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(message):
+
+    global message_counter
+
+    
     c_id =f"{message.chat_id}"
     set_id = find_set_id_for_group(c_id)
 
@@ -467,6 +505,11 @@ async def handler(message):
 
     if message.text:
         try:
+            message_counter += 1
+            with open('btn.json', 'r') as fp:
+                btn = json.load(fp)
+            button = [Button.url(btn['txt'], btn['url'])]
+            
             for out in n_l:
                 if message.reply_to:
                     try:
@@ -496,16 +539,16 @@ async def handler(message):
                     if message.media:
                         if hasattr(message.media,'webpage'):
                             if message.text[:4].lower() == 'http' and len(message.text.split())==1:
-                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id)
+                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                             else:
-                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
+                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                         else:
-                            r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id)
+                            r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                             msg_val[out] = r.id
                     else:
-                        r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id)
+                        r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                         msg_val[out] = r.id
                 except Exception as e:
                     logging.error(f"out_id:{out}, in_id:{c_id}, Error:{e}")
@@ -521,6 +564,10 @@ async def handler(message):
                 json.dump(data,fp,indent=1)
     else:
         try:
+            message_counter += 1
+            with open('btn.json', 'r') as fp:
+                btn = json.load(fp)
+            button = [Button.url(btn['txt'], btn['url'])]
             for out in n_l:
                 if message.reply_to:
                     try:
@@ -540,7 +587,8 @@ async def handler(message):
                     reply_id= None
 
                 out_channel= await client.get_input_entity(int(out))
-                r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}")
+
+                r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}",buttons=[button])
                 msg_val[out] = r.id
         except Exception as e:
             logging.error(e)
