@@ -11,26 +11,29 @@ TARGET_GROUP_ID = -1002450268419
 bot_client = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 user_client = TelegramClient('user_session', API_ID, API_HASH)
 
+# Dictionary to store user IDs and their join links
+user_links = {}
 
-async def create_unique_join_link():
+async def create_unique_join_link(user_id):
+    if user_id in user_links:
+        # Return existing link if one has already been generated
+        return user_links[user_id]
     try:
         result = await bot_client(ExportChatInviteRequest(
             peer=TARGET_GROUP_ID,  # Replace with your group ID
             expire_date=None,  # Link will not expire
             usage_limit=1  # One-time use link
         ))
+        # Store the generated link for the user
+        user_links[user_id] = result.link
         return result.link
     except Exception as e:
         print(f"Error creating join link: {str(e)}")
         return None
 
-
 async def start_clients():
     await user_client.start()
     print("Both bot and user clients started")
-
-
-
 
 start_msg = """👋 Hi,
 🌟 Welcome to the anasalivipbot 🤖 
@@ -38,7 +41,7 @@ start_msg = """👋 Hi,
 📥 Please enter your Quotex Trader ID.
 🔍 After we verify your details,  you’ll receive the VIP Group Channel link 🔗. 
 
- Let's Escape the Rat Race! 🚀💼."""
+Let's Escape the Rat Race! 🚀💼."""
 link_msg = """It appears that your account is not registered using my referral link. ❌
 
 Sign up with the link below 👇
@@ -55,7 +58,6 @@ async def handler(event):
 
         if message.startswith('/start'):
             await bot_client.send_message(user_id, start_msg)
-            
 
         if not (message.isdigit() and len(message) == 8):
             await bot_client.send_message(user_id, "Trader ID should be an 8-digit number. Please try again.")
@@ -71,12 +73,12 @@ async def handler(event):
                 return
             
             if 'turnover' in response.message.lower():
-                # Create a unique join link for the user
-                join_link = await create_unique_join_link()
+                # Get or create a unique join link for the user
+                join_link = await create_unique_join_link(user_id)
 
                 if join_link:
-                    # Send the unique one-time join link to the user
-                    await bot_client.send_message(user_id, f"Here is your one-time join link: {join_link}")
+                    # Send the stored or newly created one-time join link to the user
+                    await bot_client.send_message(user_id, f"Here is your join link: {join_link}")
                 else:
                     # Handle the case if there was an error creating the join link
                     await bot_client.send_message(user_id, "Sorry, there was an error creating your join link.")
@@ -85,7 +87,6 @@ async def handler(event):
                 await bot_client.send_message(user_id, link_msg)
         except Exception as e:
             await bot_client.send_message(user_id, f"Error processing your request: {str(e)}")
-
 
 # Start the bot and user clients
 with bot_client, user_client:
