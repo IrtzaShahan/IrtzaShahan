@@ -9,7 +9,8 @@ import logging
 from telethon.errors import rpcerrorlist
 import asyncio
 
-bot_token_hash = "6956671682:AAFupT71zTXr1ia025W4DND9I8vkNjfXNF0"
+bot_token_hash = "6372162476:AAExG15_H1HuHKDDfC9UNejOL55ThAulOfU"
+
 word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
                            'Rond':'輪舞;Rond',
                            'ROND':'輪舞;ROND',
