@@ -1,48 +1,46 @@
-from telethon.sync import TelegramClient, events, Button
+from telethon.sync import TelegramClient,events, Button
 from telethon.tl.functions.channels import GetParticipantsRequest
 from telethon.tl.types import Chat, Channel, ChannelParticipantsAdmins
 from telethon.tl.functions.messages import GetFullChatRequest
 from datetime import datetime, timedelta
 from time import time
-import os, requests, json
+import os, requests,json
 import logging
 from telethon.errors import rpcerrorlist
 import asyncio
 
-bot_token_hash = "<your_bot_token>"
+bot_token_hash = "6956671682:AAFupT71zTXr1ia025W4DND9I8vkNjfXNF0"
+word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
+                           'Rond':'輪舞;Rond',
+                           'ROND':'輪舞;ROND',
+                           'ronds':'ロンズ;ronds',
+                           'RONDS':'身動き;RONDS',
+                           'mrond':'ムロンド;mrond',
+                           'GENSOKISHI':'源生史;GENSOKISHI',
+                           'Genso':'ジンソ;Genso',
+                           'GENSO':'玄武岩;GENSO',
+                           'gensokishi':'源⽣史;gensokishi',
+                           'GensoKishi':'⽞武岸;GensoKishi',
+                           'Gensokishi':'源生志;Gensokishi',
+                           'CS':'セシウム;CS',
+                           'MV':'マービー・エム;MV',
+                           'mv':'品種;mv',
+                           'MMV':'ミリ秒;MMV',
+                           'mmv':'ミリ秒;mmv'
+                           }
 
-word_meaning_dictionary = {
-    'Marketplace': '市場;マーケットプレイス',
-    'Rond': '輪舞;Rond',
-    'ROND': '輪舞;ROND',
-    'ronds': 'ロンズ;ronds',
-    'RONDS': '身動き;RONDS',
-    'mrond': 'ムロンド;mrond',
-    'GENSOKISHI': '源生史;GENSOKISHI',
-    'Genso': 'ジンソ;Genso',
-    'GENSO': '玄武岩;GENSO',
-    'gensokishi': '源⽣史;gensokishi',
-    'GensoKishi': '⽞武岸;GensoKishi',
-    'Gensokishi': '源生志;Gensokishi',
-    'CS': 'セシウム;CS',
-    'MV': 'マービー・エム;MV',
-    'mv': '品種;mv',
-    'MMV': 'ミリ秒;MMV',
-    'mmv': 'ミリ秒;mmv'
-}
+api_id = 27626586
+api_hash = '90c8ff00f20929899e1cc2f16d63ffe1'
+api_key = "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
 
-api_id = <your_api_id>
-api_hash = '<your_api_hash>'
-api_key = "<your_translation_api_key>"
-
-with open('sets_configs.json', 'r') as fp:
-    sets_config = json.load(fp)
+with open('sets_configs.json','r') as fp:
+    sets_config=json.load(fp)
 
 client = TelegramClient('bot', api_id, api_hash)
 client.start(bot_token=bot_token_hash)
 me = client.get_me()
 
-# Set up logging
+# set up logging
 format_str = '%(asctime)s - %(levelname)s - %(message)s'
 file_name = 'console.log'
 
@@ -55,6 +53,7 @@ file_handler.setFormatter(logging.Formatter(format_str))
 
 # Add the console handler to the root logger
 logging.getLogger().addHandler(file_handler)
+
 
 admin_cache = {}
 admin_cache_expiry = timedelta(hours=5)
@@ -83,6 +82,7 @@ async def get_admins(chat_id):
         full_chat = await client(GetFullChatRequest(chat_id))
         admins = [user.id for user in full_chat.full_chat.participants.participants if user.admin_rights]
 
+
     # Update the cache
     admin_cache[chat_id] = (admins, datetime.now())
 
@@ -92,14 +92,11 @@ async def is_user_admin(chat_id, user_id):
     admins = await get_admins(chat_id)
     return user_id in admins
 
-def translate_text(text, target_language, api_key, source_language):
+
+def translate_text(text, target_language, api_key,source_language):
     url = "https://api-b2b.backenster.com/b1/api/v3/translate"
 
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/json",
-        "Authorization": api_key
-    }
+    headers = {"accept": "application/json", "content-type": "application/json", "Authorization": api_key}
 
     if source_language == "zh-Hant_TW":
         data = {"platform": "api", "to": target_language, "data": text}
@@ -112,21 +109,18 @@ def translate_text(text, target_language, api_key, source_language):
         translated_text = response.json()['result']
         for word in word_meaning_dictionary:
             if word in text:
-                translated_text = translated_text.replace(
-                    word_meaning_dictionary[word].split(';')[0],
-                    word_meaning_dictionary[word].split(';')[1]
-                )
+                translated_text = translated_text.replace(word_meaning_dictionary[word].split(';')[0],word_meaning_dictionary[word].split(';')[1])
         return translated_text
     else:
         logging.warning(response.text)
         return False
 
 def update_sets(data):
-    with open('sets_configs.json', 'w') as fp:
-        json.dump(data, fp, indent=1)
+    with open('sets_configs.json','w') as fp:
+        json.dump(data,fp,indent=1)
     global sets_config
-    with open('sets_configs.json', 'r') as fp:
-        sets_config = json.load(fp)
+    with open('sets_configs.json','r') as fp:
+        sets_config=json.load(fp)
 
 def remove_set(project_name):
     if project_name not in sets_config:
@@ -172,12 +166,13 @@ def list_sets():
 
     return result.strip()
 
+
 def find_object_with_key_value(data, key, value):
     for parent_key, parent_value in data.items():
         if key in parent_value and parent_value[key] == value:
             return parent_key, parent_value
     logging.warning(f"key,val '{key},{value}' not found")
-    return 'None', 'None;None'
+    return 'None','None;None'
 
 def find_set_id_for_group(group_id):
     for set_id, config in sets_config.items():
@@ -186,24 +181,30 @@ def find_set_id_for_group(group_id):
     logging.warning(f'group_id not found in any channels {group_id}')
     return None
 
+
 def get_sender_link(sender):
     sender_name = ''
     if sender:
-        if hasattr(sender, 'first_name') and sender.first_name:
-            sender_name = sender.first_name + ' '
-        if hasattr(sender, 'last_name') and sender.last_name:
+        if hasattr(sender,'first_name') and sender.first_name:
+            sender_name =  sender.first_name+' '
+        if hasattr(sender,'last_name') and sender.last_name:
             sender_name += sender.last_name
-        if (not sender_name) and hasattr(sender, 'username') and sender.username:
+        if (not sender_name) and hasattr(sender,'username') and sender.username:
             sender_name = sender.username
         sender_link = f"[{sender_name}](https://t.me/{sender.username})"
     else:
         sender_link = ''
     return sender_link
 
+
 message_counter = 0
 
 @client.on(events.NewMessage(pattern='/set_button_data'))
 async def set_button_data(event):
+##    if event.sender_id != 6345455034:
+##        await event.respond("You are not eligible for this action.", reply_to=event.message)
+##        return
+
     txt = event.message.text
 
     format_correct = len(txt.split()) > 2
@@ -217,18 +218,14 @@ async def set_button_data(event):
             json.dump(btn, fp)
         await event.respond("Button text and URL successfully updated.", reply_to=event.message)
     else:
-        await event.respond(
-            "Please send the command in correct format like this:\n"
-            "\"command url button text\"\n\n"
-            "For example:\n/set_button_data www.youtube.com sample button text",
-            reply_to=event.message
-        )
+        await event.respond("Please send the command in correct format like this:\n\"command url button text\"\n\nFor example:\n/set_button_data www.youtube.com sample button text", reply_to=event.message)
+
 
 @client.on(events.NewMessage(pattern='/set_project '))
 async def new_project(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -236,7 +233,7 @@ async def new_project(event):
     command, project_name = text.split(maxsplit=1)
     data = sets_config
     if project_name in sets_config:
-        await event.reply(f"Project name '{project_name}' already exists. Please choose a unique one.")
+        await event.reply(f"project name '{project_name}' already exists. Please choose a unique one.")
     else:
         sets_config[project_name] = {
             "channels_list": [],
@@ -245,13 +242,13 @@ async def new_project(event):
             "filters": {}
         }
         update_sets(sets_config)
-        await event.reply(f"New project named '{project_name}' added successfully.")
+        await event.reply(f"New Project named '{project_name}' added successfully.")
 
 @client.on(events.NewMessage(pattern='/removeproject '))
 async def remove_set_command(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -265,7 +262,7 @@ async def remove_set_command(event):
 async def add_group(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -274,10 +271,7 @@ async def add_group(event):
     try:
         project_name, group_id, group_language, flag, group_invite_link = [x.strip() for x in details.split(',')]
     except:
-        await event.reply(
-            "Command is not correctly used. Please use the format:\n"
-            "/addgroup <project_name>, <group_id>, <group_language>, <flag>, <group_invite_link>"
-        )
+        await event.reply(f"command is not correctly used please use below format and don't forget to use the commas\n/addgroup <project_name>, <group_id>, <group_language>, <flag>, <group_invite_link>")
         return
 
     if project_name not in sets_config:
@@ -295,7 +289,7 @@ async def add_group(event):
 async def remove_group_command(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -304,10 +298,7 @@ async def remove_group_command(event):
     try:
         project_name, group_id = [x.strip() for x in details.split(',')]
     except:
-        await event.reply(
-            "Command is not correctly used. Please use the format:\n"
-            "/removegroup <project_name>, <group_id>"
-        )
+        await event.reply(f"Command is not correctly used. Please use the format:\n/removegroup <project_name>, <group_id>")
         return
 
     result = remove_group(project_name, group_id)
@@ -318,8 +309,8 @@ async def list_sets_command(event):
     c_id = event.chat_id
     user_id = event.sender_id
 
-    # Check if the user is an admin or the specific user
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    # Check if the user is an admin or the specific user (279679219)
+    if (not user_id == 5587063896) and (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
@@ -327,17 +318,18 @@ async def list_sets_command(event):
     result = list_sets()
     await event.reply(result)
 
+
 @client.on(events.NewMessage(pattern='/addfilter '))
 async def add_filter(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
     set_id = find_set_id_for_group(c_id)
     if not set_id:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     text = event.message.text.split(maxsplit=1)
@@ -346,19 +338,19 @@ async def add_filter(event):
         command = command[1:-1]  # Remove quotes for phrases
     sets_config[set_id]['filters'][command.lower()] = reply
     update_sets(sets_config)
-    await event.reply(f"Filter for '{command}' added successfully.")
+    await event.reply(f"filter for '{command}' added successfully.")
 
 @client.on(events.NewMessage(pattern='/stopfilter '))
 async def remove_filter(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
     set_id = find_set_id_for_group(c_id)
     if not set_id:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     command = event.message.text.split(maxsplit=1)[1]
@@ -368,21 +360,21 @@ async def remove_filter(event):
     if command.lower() in sets_config[set_id]['filters']:
         del sets_config[set_id]['filters'][command.lower()]
         update_sets(sets_config)
-        await event.reply(f"Filter for '{command}' removed.")
+        await event.reply(f"filter for '{command}' removed.")
     else:
-        await event.reply("Filter not found.")
+        await event.reply("filter not found.")
 
 @client.on(events.NewMessage(pattern='/stopall'))
 async def remove_all_filters(event):
     c_id = event.chat_id
     user_id = event.sender_id
-    if (not user_id == <your_user_id>) and (not await is_user_admin(c_id, user_id)):
+    if (not user_id == 279679219) and (not await is_user_admin(c_id, user_id)):
         await event.reply("You need to be an admin to use this command.")
         return
 
     set_id = find_set_id_for_group(c_id)
     if not set_id:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     sets_config[set_id]['filters'].clear()
@@ -391,10 +383,10 @@ async def remove_all_filters(event):
 
 @client.on(events.NewMessage(pattern='/filters'))
 async def list_filters(event):
-    c_id = f"{event.chat_id}"
+    c_id =f"{event.chat_id}"
     set_id = find_set_id_for_group(c_id)
     if not set_id:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     if sets_config[set_id]['filters']:
@@ -405,14 +397,14 @@ async def list_filters(event):
 
 @client.on(events.NewMessage(pattern='/id'))
 async def id_handler(event):
-    await event.reply(f"This channel/group id is: {event.chat_id}")
+    await event.reply(f"this channel/group id is: {event.chat_id}")
 
 @client.on(events.MessageEdited)
 async def edit_handler(message):
     if message.text and message.text.startswith('/') or message.out:
         return
 
-    c_id = f"{message.chat_id}"
+    c_id =f"{message.chat_id}"
     set_id = find_set_id_for_group(c_id)
 
     if set_id:
@@ -420,17 +412,17 @@ async def edit_handler(message):
         langs = sets_config[set_id]['langs']
         flags = sets_config[set_id]['flags']
     else:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     try:
         n_l.remove(c_id)
     except Exception as e:
-        logging.error("Fatal error")
+        logging.error("fatal error")
         logging.error(e)
         return
     await asyncio.sleep(35)
-    with open('table.json', 'r') as fp:
+    with open('table.json','r') as fp:
         data = json.load(fp)
 
     if message.text:
@@ -439,11 +431,11 @@ async def edit_handler(message):
                 try:
                     msg_id = data[f"{c_id};{message.id}"][out]
                 except KeyError:
-                    msg_id = None
-                    logging.warning(f"Failed to find original message being edited, {c_id};{message.id}:{out}")
+                    msg_id= None
+                    logging.warning(f"failed to find original message being edited, {c_id};{message.id}:{out}")
                     continue
 
-                completion = translate_text(message.text.strip(), langs[out], api_key, langs[c_id])
+                completion = translate_text(message.text.strip(), langs[out], api_key,langs[c_id])
 
                 try:
                     original_message = await client.get_messages(int(out), ids=msg_id)
@@ -457,40 +449,37 @@ async def edit_handler(message):
                     sender_link = get_sender_link(sender)
                     original_text_line1 = f"{flags[str(c_id)]} {sender_link}\n"
 
-                await client.edit_message(
-                    int(out),
-                    msg_id,
-                    f"{original_text_line1}\n{completion.strip()}",
-                    link_preview=False
-                )
+
+                await client.edit_message(int(out), msg_id, f"{original_text_line1}\n{completion.strip()}",link_preview=False)
         except rpcerrorlist.MessageNotModifiedError:
-            logging.info("Edited message is same as original")
+            logging.info("edited message is same as original")
             return
         except Exception as e:
             logging.error(e)
         else:
-            logging.info('A message edited successfully')
+            logging.info('A msg edited succesfully')
+
 
 @client.on(events.MessageDeleted)
 async def deleted_message_listener(message):
-    c_id = f"{message.chat_id}"
+    c_id =f"{message.chat_id}"
     set_id = find_set_id_for_group(c_id)
 
     if set_id:
         n_l = sets_config[set_id]['channels_list'][:]
     else:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     try:
         n_l.remove(c_id)
     except Exception as e:
-        logging.error("Fatal error")
+        logging.error("fatal error")
         logging.error(e)
         return
 
     await asyncio.sleep(10)
-    with open('table.json', 'r') as fp:
+    with open('table.json','r') as fp:
         data = json.load(fp)
 
     for out in n_l:
@@ -501,26 +490,27 @@ async def deleted_message_listener(message):
         try:
             msg_id = data[f"{c_id};{message.deleted_id}"][out]
         except KeyError:
-            msg_id = None
-            logging.warning(f"Failed to find original message being deleted, {c_id};{message.deleted_id}:{out}")
+            msg_id= None
+            logging.warning(f"failed to find original message being edited, {c_id};{message.deleted_id}:{out}")
             continue
-        await client.delete_messages(int(out), msg_id)
+        await client.delete_messages(int(out),msg_id)
+
 
 @client.on(events.ChatAction)
 async def pin_msg_handler(message):
-    c_id = f"{message.chat_id}"
+    c_id =f"{message.chat_id}"
     set_id = find_set_id_for_group(c_id)
 
     if set_id:
         n_l = sets_config[set_id]['channels_list'][:]
     else:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     await asyncio.sleep(120)
 
     if message.action_message and message.action_message.reply_to:
-        with open('table.json', 'r') as fp:
+        with open('table.json','r') as fp:
             data = json.load(fp)
         n_l.remove(c_id)
 
@@ -528,19 +518,22 @@ async def pin_msg_handler(message):
             try:
                 msg_id = data[f"{c_id};{message.action_message.reply_to.reply_to_msg_id}"][out]
                 if not msg_id:
-                    logging.error(f"Message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
+                    logging.error(f"message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
                     continue
             except:
-                logging.error(f"Message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
+                logging.error(f"message to be pinned not found, {c_id};{message.action_message.reply_to.reply_to_msg_id};{out}")
                 continue
 
-            await client.pin_message(int(out), msg_id)
+            await client.pin_message(int(out),msg_id)
+
 
 @client.on(events.NewMessage(incoming=True))
 async def handler(message):
+
     global message_counter
 
-    c_id = f"{message.chat_id}"
+
+    c_id =f"{message.chat_id}"
     set_id = find_set_id_for_group(c_id)
 
     if set_id:
@@ -549,27 +542,28 @@ async def handler(message):
         flags = sets_config[set_id]['flags']
         filters = sets_config[set_id]['filters']
     else:
-        logging.error('Received message outside of any provided sets')
+        logging.error('rcvd message out of any provided sets')
         return
 
     if message.text:
         text = message.text.lower()
         for command in filters:
             if command in text:
-                await message.reply(filters[command], link_preview=False)
+                await message.reply(filters[command],link_preview =False)
                 return
         if message.text.startswith('/'):
             return
 
+
     try:
         n_l.remove(c_id)
-        msg_key, msg_val = f"{c_id};{message.id}", {}
+        msg_key,msg_val = f"{c_id};{message.id}",{}
     except Exception as e:
-        logging.error("Fatal error")
+        logging.error("fatal error")
         logging.error(e)
         return
 
-    with open('table.json', 'r') as fp:
+    with open('table.json','r') as fp:
         data = json.load(fp)
 
     sender = await message.get_sender()
@@ -587,7 +581,7 @@ async def handler(message):
                     try:
                         reply_id = data[f"{c_id};{message.reply_to.reply_to_msg_id}"][out]
                     except KeyError:
-                        key, obj = find_object_with_key_value(data, c_id, message.reply_to.reply_to_msg_id)
+                        key, obj = find_object_with_key_value(data,c_id,message.reply_to.reply_to_msg_id)
                         if out in key:
                             reply_id = int(key.split(';')[-1])
                         elif 'None' in key:
@@ -596,54 +590,31 @@ async def handler(message):
                             try:
                                 reply_id = obj[out]
                             except:
-                                reply_id = None
+                                reply_id= None
                 else:
-                    reply_id = None
+                    reply_id= None
 
-                out_channel = await client.get_input_entity(int(out))
-                completion = translate_text(message.text.strip(), langs[out], api_key, langs[str(c_id)])
+                out_channel= await client.get_input_entity(int(out))
+                completion = translate_text(message.text.strip(), langs[out], api_key,langs[str(c_id)])
 
                 if not completion:
-                    logging.error(f"Translation failed for the following message: {message.text.strip()}\n")
+                    logging.error(f"Translation failed for following message: {message.text.strip()}\n")
                     return
 
                 try:
                     if message.media:
-                        if hasattr(message.media, 'webpage'):
-                            if message.text[:4].lower() == 'http' and len(message.text.split()) == 1:
-                                r = await client.send_message(
-                                    out_channel,
-                                    f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",
-                                    link_preview=False,
-                                    reply_to=reply_id,
-                                    buttons=[button]
-                                )
+                        if hasattr(message.media,'webpage'):
+                            if message.text[:4].lower() == 'http' and len(message.text.split())==1:
+                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                             else:
-                                r = await client.send_message(
-                                    out_channel,
-                                    f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",
-                                    reply_to=reply_id,
-                                    buttons=[button]
-                                )
+                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                         else:
-                            r = await client.send_file(
-                                out_channel,
-                                message.media,
-                                caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",
-                                reply_to=reply_id,
-                                buttons=[button]
-                            )
+                            r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                             msg_val[out] = r.id
                     else:
-                        r = await client.send_message(
-                            out_channel,
-                            f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",
-                            link_preview=False,
-                            reply_to=reply_id,
-                            buttons=[button]
-                        )
+                        r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                         msg_val[out] = r.id
                 except Exception as e:
                     logging.error(f"out_id:{out}, in_id:{c_id}, Error:{e}")
@@ -651,12 +622,12 @@ async def handler(message):
         except Exception as e:
             logging.error(e)
         else:
-            logging.info('A message forwarded successfully')
-            with open('table.json', 'r') as fp:
+            logging.info('A msg forwarded succesfully')
+            with open('table.json','r') as fp:
                 data = json.load(fp)
             data[msg_key] = msg_val
-            with open('table.json', 'w') as fp:
-                json.dump(data, fp, indent=1)
+            with open('table.json','w') as fp:
+                json.dump(data,fp,indent=1)
     else:
         try:
             message_counter += 1
@@ -668,7 +639,7 @@ async def handler(message):
                     try:
                         reply_id = data[f"{c_id};{message.reply_to.reply_to_msg_id}"][out]
                     except KeyError:
-                        key, obj = find_object_with_key_value(data, c_id, message.reply_to.reply_to_msg_id)
+                        key, obj = find_object_with_key_value(data,c_id,message.reply_to.reply_to_msg_id)
                         if out in key:
                             reply_id = int(key.split(';')[-1])
                         elif 'None' in key:
@@ -677,31 +648,25 @@ async def handler(message):
                             try:
                                 reply_id = obj[out]
                             except:
-                                reply_id = None
+                                reply_id= None
                 else:
-                    reply_id = None
+                    reply_id= None
 
-                out_channel = await client.get_input_entity(int(out))
-                r = await client.send_file(
-                    out_channel,
-                    message.media,
-                    caption=f"{flags[str(c_id)]} {sender_link}",
-                    buttons=[button]
-                )
+                out_channel= await client.get_input_entity(int(out))
+                r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}",buttons=[button])
 
                 msg_val[out] = r.id
         except Exception as e:
             logging.error(e)
         else:
-            logging.info('A message forwarded successfully')
-            with open('table.json', 'r') as fp:
+            logging.info('A msg forwarded succesfully')
+            with open('table.json','r') as fp:
                 data = json.load(fp)
             data[msg_key] = msg_val
-            with open('table.json', 'w') as fp:
-                json.dump(data, fp, indent=1)
+            with open('table.json','w') as fp:
+                json.dump(data,fp,indent=1)
 
-logging.info(
-    f'\nBot {me.username} is started and will try to forward all received signals from source groups to destination group, please make sure to leave this window open (do not close it)\n'
-)
+
+logging.info(f'\nBot {me.username} is started and will try to forward all rcvd signals from source groups to destination group, please make sure to leave this window open(do not close it)\n')
 
 client.run_until_disconnected()
