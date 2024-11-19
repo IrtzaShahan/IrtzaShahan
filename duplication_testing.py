@@ -1,15 +1,13 @@
-from telethon.sync import TelegramClient,events, Button
-from telethon.tl.functions.channels import GetParticipantsRequest
-from telethon.tl.types import Chat, Channel, ChannelParticipantsAdmins
-from telethon.tl.functions.messages import GetFullChatRequest
+import asyncio,json,os,logging,requests
 from datetime import datetime, timedelta
 from time import time
-import os, requests,json
-import logging
+from telethon import TelegramClient, events, Button
 from telethon.errors import rpcerrorlist
-import asyncio
+from telethon.sync import TelegramClient
+from telethon.tl.functions.channels import GetParticipantsRequest
+from telethon.tl.functions.messages import GetFullChatRequest
+from telethon.tl.types import Chat, Channel, ChannelParticipantsAdmins
 
-bot_token_hash = "6372162476:AAExG15_H1HuHKDDfC9UNejOL55ThAulOfU"
 
 word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
                            'Rond':'輪舞;Rond',
@@ -33,6 +31,16 @@ word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
 api_id = 27626586
 api_hash = '90c8ff00f20929899e1cc2f16d63ffe1'
 api_key = "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
+bot_token_hash = "6956671682:AAFupT71zTXr1ia025W4DND9I8vkNjfXNF0"
+
+
+def generate_message_link(c_id, message_id):
+    if str(c_id).startswith('-100'):
+        chat_id_num = str(c_id)[4:]
+    else:
+        chat_id_num = str(c_id).lstrip('-')
+    return f"https://t.me/c/{chat_id_num}/{message_id}"
+
 
 with open('sets_configs.json','r') as fp:
     sets_config=json.load(fp)
@@ -57,23 +65,14 @@ logging.getLogger().addHandler(file_handler)
 
 
 admin_cache = {}
-admin_cache_expiry = timedelta(hours=5)
+ADMIN_CACHE_EXPIRY = timedelta(hours=5)
 
 async def get_admins(chat_id):
     # Check if the admin list is cached and still valid
     if chat_id in admin_cache:
         admins, timestamp = admin_cache[chat_id]
-        if datetime.now() - timestamp < admin_cache_expiry:
+        if datetime.now() - timestamp < ADMIN_CACHE_EXPIRY:
             return admins
-
-##    # Fetch the list of admins
-##    result = await client(GetParticipantsRequest(
-##        channel=chat_id,
-##        filter=ChannelParticipantsAdmins(),
-##        offset=0,
-##        limit=100,
-##        hash=0
-##    ))
 
     entity = await client.get_entity(chat_id)
 
@@ -92,9 +91,6 @@ async def get_admins(chat_id):
         full_chat = await client(GetFullChatRequest(chat_id))
         admins = [user.id for user in full_chat.full_chat.participants.participants if user.admin_rights]
 
-
-
-##    admins = [user.id for user in result.users]
 
     # Update the cache
     admin_cache[chat_id] = (admins, datetime.now())
@@ -138,10 +134,10 @@ def update_sets(data):
 def remove_set(project_name):
     if project_name not in sets_config:
         return f"Project '{project_name}' does not exist."
-    
+
     # Remove the entire project
     del sets_config[project_name]
-    
+
     # Update the JSON file
     update_sets(sets_config)
     return f"Project '{project_name}' removed successfully."
@@ -151,12 +147,12 @@ def remove_group(project_name, group_id):
         return f"Project '{project_name}' does not exist."
     if group_id not in sets_config[project_name]["channels_list"]:
         return f"Group ID '{group_id}' not found in project '{project_name}'."
-    
+
     # Remove group details from the project
     sets_config[project_name]["channels_list"].remove(group_id)
     del sets_config[project_name]["langs"][group_id]
     del sets_config[project_name]["flags"][group_id]
-    
+
     # Update the JSON file
     update_sets(sets_config)
     return f"Group ID '{group_id}' removed from project '{project_name}' successfully."
@@ -176,7 +172,7 @@ def list_sets():
                 group_flag = project_details["flags"].get(group_id, "N/A")
                 result += f"  Group ID: {group_id}, Language: {group_lang}, Flag: {group_flag}\n"
         result += "\n"
-    
+
     return result.strip()
 
 
@@ -209,24 +205,6 @@ def get_sender_link(sender):
         sender_link = ''
     return sender_link
 
-
-##def get_entities(config):
-##    all_entities = []
-##    for set_name, set_details in config.items():
-##        entity_list = []
-##        channels_list = set_details["channels_list"]
-##        for channel in channels_list:
-##            try:
-##                input_par = int(channel)
-##            except ValueError:
-##                input_par = channel
-##            entity = client.get_input_entity(input_par)
-##            entity_list.append(entity)
-##        all_entities.extend(entity_list)
-##    return all_entities
-##
-##
-##entities = get_entities(sets_config)
 
 message_counter = 0
 
@@ -441,10 +419,19 @@ async def edit_handler(message):
     if set_id:
         n_l = sets_config[set_id]['channels_list'][:]
         langs = sets_config[set_id]['langs']
-        flags = sets_config[set_id]['flags']
+        flag = sets_config[set_id]['flags'][str(c_id)]
     else:
         logging.error('rcvd message out of any provided sets')
         return
+
+    # Extract the flag emoji from flags[str(c_id)]
+    flag_emoji = flag.split(']')[0][1:]
+
+    # Generate the message link
+    message_link = generate_message_link(c_id, message.id)
+
+    # Construct the new flag link
+    flag_link = f"[{flag_emoji}]({message_link})"
 
     try:
         n_l.remove(c_id)
@@ -474,11 +461,11 @@ async def edit_handler(message):
                     if not original_message:
                         sender = await message.get_sender()
                         sender_link = get_sender_link(sender)
-                        original_text_line1 = f"{flags[str(c_id)]} {sender_link}\n"
+                        original_text_line1 = f"{flag_link} {sender_link}\n"
                 except:
                     sender = await message.get_sender()
                     sender_link = get_sender_link(sender)
-                    original_text_line1 = f"{flags[str(c_id)]} {sender_link}\n"
+                    original_text_line1 = f"{flag_link} {sender_link}\n"
 
 
                 await client.edit_message(int(out), msg_id, f"{original_text_line1}\n{completion.strip()}",link_preview=False)
@@ -570,11 +557,19 @@ async def handler(message):
     if set_id:
         n_l = sets_config[set_id]['channels_list'][:]
         langs = sets_config[set_id]['langs']
-        flags = sets_config[set_id]['flags']
+        flag = sets_config[set_id]['flags'][str(c_id)]
         filters = sets_config[set_id]['filters']
     else:
         logging.error('rcvd message out of any provided sets')
         return
+    # Extract the flag emoji from flags[str(c_id)]
+    flag_emoji = flag.split(']')[0][1:]
+
+    # Generate the message link
+    message_link = generate_message_link(c_id, message.id)
+
+    # Construct the new flag link
+    flag_link = f"[{flag_emoji}]({message_link})"
 
     if message.text:
         text = message.text.lower()
@@ -636,16 +631,16 @@ async def handler(message):
                     if message.media:
                         if hasattr(message.media,'webpage'):
                             if message.text[:4].lower() == 'http' and len(message.text.split())==1:
-                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
+                                r = await client.send_message(out_channel,f"{flag_link} {sender_link}\n{message.text.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                             else:
-                                r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
+                                r = await client.send_message(out_channel,f"{flag_link} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                                 msg_val[out] = r.id
                         else:
-                            r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
+                            r = await client.send_file(out_channel,message.media,caption=f"{flag_link} {sender_link}\n{completion.strip()}",reply_to =reply_id,buttons=[button])
                             msg_val[out] = r.id
                     else:
-                        r = await client.send_message(out_channel,f"{flags[str(c_id)]} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
+                        r = await client.send_message(out_channel,f"{flag_link} {sender_link}\n{completion.strip()}",link_preview=False,reply_to =reply_id,buttons=[button])
                         msg_val[out] = r.id
                 except Exception as e:
                     logging.error(f"out_id:{out}, in_id:{c_id}, Error:{e}")
@@ -684,7 +679,7 @@ async def handler(message):
                     reply_id= None
 
                 out_channel= await client.get_input_entity(int(out))
-                r = await client.send_file(out_channel,message.media,caption=f"{flags[str(c_id)]} {sender_link}",buttons=[button])
+                r = await client.send_file(out_channel,message.media,caption=f"{flag_link} {sender_link}",buttons=[button])
 
                 msg_val[out] = r.id
         except Exception as e:
