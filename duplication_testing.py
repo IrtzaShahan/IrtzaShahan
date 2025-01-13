@@ -31,7 +31,8 @@ word_meaning_dictionary = {'Marketplace':'市場;マーケットプレイス',
 api_id = 27626586
 api_hash = '90c8ff00f20929899e1cc2f16d63ffe1'
 api_key = "a_Srrj954JR2Kp5RYULdKL3tCNy1sd5UoG6SDFlPRuAmeos7BJePiTJ5ESjSVQfEMWoo1ZPrnZdr5JlaIz"
-bot_token_hash = "6956671682:AAFupT71zTXr1ia025W4DND9I8vkNjfXNF0"
+with open('bot_token.txt','r') as fp:
+    bot_token_hash = fp.read()
 
 
 def generate_message_link(c_id, message_id):
